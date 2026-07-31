@@ -1,0 +1,9 @@
+# Pinned for reproducible, local-only training environments. Install PyTorch's
+# platform-appropriate wheel first if your environment requires a custom index.
+torch==2.5.1
+transformers==4.49.0
+datasets==3.2.0
+accelerate==1.2.1
+soundfile==0.13.0
+peft==0.14.0
+numpy==2.2.1
