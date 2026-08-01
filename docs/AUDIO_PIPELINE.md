@@ -115,9 +115,10 @@ high background noise.
 
 ## ScreenCaptureKit details
 
-System audio requires Screen Recording consent. The source calls
-CGPreflightScreenCaptureAccess before it creates an SCStream; a denied state is
-emitted instead of trying to prompt or capture silently. It requests an audio
+System audio requires Screen Recording consent. On an explicit Start action, the
+main app preflights with CGPreflightScreenCaptureAccess and requests access with
+CGRequestScreenCaptureAccess when it is missing. The source emits a denied state
+before it creates an SCStream if access remains unavailable. It requests an audio
 output only and stops the stream cleanly. If a selected display or application no
 longer appears in SCShareableContent, preparation fails with a clear unavailable
 state.

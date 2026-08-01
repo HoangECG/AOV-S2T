@@ -41,6 +41,21 @@ not an app error. Try a display source. The app intentionally excludes its own
 audio where the filter supports it; absence of self-audio can therefore be
 expected.
 
+## Local subtitle overlay problems
+
+| Symptom | Check | Response |
+| --- | --- | --- |
+| Overlay says unavailable | Read the local overlay status and ensure another security product is not blocking loopback listeners | Retry **Open overlay**; capture can still run, but do not change the listener to a LAN address as a workaround |
+| Browser source has no text | Copy the exact URL currently shown by the app, including its port and `/overlay` path | Re-open the page after app restart; the app intentionally uses an OS-assigned port |
+| Page appears opaque | Browser windows and browser-source hosts manage window/capture transparency separately | Enable the host's transparent-page option; the served page itself has `background: transparent` |
+| Caption is too early or late | Confirm **Display delay** and compare with the end of the captured sentence, not the ASR request start | Set a positive presentation delay; this does not modify stored SRT/VTT timing or audio capture |
+| Another device can reach it | This is not expected for the implemented binding | Stop using the URL, inspect the actual host shown by the app, and report the issue; do not expose it through port forwarding or a proxy |
+
+The overlay is final-only because translation is final-only. A late local
+translation appears as soon as it is available even if its scheduled display
+time has passed. See [LOCAL_OVERLAY.md](LOCAL_OVERLAY.md) for the privacy and
+browser-source boundary.
+
 ## Model and local ASR problems
 
 | Symptom | Check | Response |

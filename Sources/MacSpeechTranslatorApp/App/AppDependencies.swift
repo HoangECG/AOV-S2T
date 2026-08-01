@@ -11,6 +11,7 @@ struct AppDependencies {
     let makeGlossaryRepository: () throws -> any GlossaryRepository
     let makeWhisperEngine: () -> WhisperCppEngine
     let makeTranslationEngine: () -> any TranslationEngine
+    let makeSubtitleOverlayServer: () -> LocalSubtitleOverlayServer
 
     static let live = AppDependencies(
         audioDeviceProvider: AudioDeviceManager(),
@@ -20,6 +21,7 @@ struct AppDependencies {
         makeAudioRepository: { try FileAudioRecordingRepository() },
         makeGlossaryRepository: { GlossaryPreferencesRepository() },
         makeWhisperEngine: { WhisperCppEngine() },
-        makeTranslationEngine: { AppleTranslationEngine() }
+        makeTranslationEngine: { AppleTranslationEngine() },
+        makeSubtitleOverlayServer: { LocalSubtitleOverlayServer() }
     )
 }

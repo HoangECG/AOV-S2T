@@ -1,4 +1,3 @@
-import AppKit
 import MacSpeechTranslatorCore
 import SwiftUI
 
@@ -14,7 +13,7 @@ struct MainView: View {
                 Divider()
                 statusPanel
                 Divider()
-                transcriptArea
+                overlayWorkspace
             }
         }
         .sheet(isPresented: $appState.showSettings) {
@@ -173,6 +172,7 @@ struct MainView: View {
                 Label(modelStateText, systemImage: "cpu")
                 Label("VAD: \(appState.vadState.rawValue)", systemImage: "ear")
                 Label("Translation: \(appState.translationStatus)", systemImage: "character.book.closed")
+                Label("Overlay: \(appState.subtitleOverlayStatus)", systemImage: "rectangle.on.rectangle")
             }
             .font(.caption)
             .frame(width: 250, alignment: .leading)
@@ -219,88 +219,50 @@ struct MainView: View {
         .padding(.vertical, 10)
     }
 
-    private var transcriptArea: some View {
-        HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Vietnamese transcript")
-                    .font(.headline)
-                if let partial = appState.partialEvent {
-                    Text(partial.normalizedText.isEmpty ? partial.rawText : partial.normalizedText)
-                        .italic()
-                        .foregroundStyle(.secondary)
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
-                }
-                segmentList
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
+    private var overlayWorkspace: some View {
+        VStack(spacing: 18) {
+            Spacer(minLength: 24)
+            Image(systemName: "captions.bubble")
+                .font(.system(size: 42))
+                .foregroundStyle(.tint)
+            Text("Subtitles are rendered in the local web overlay")
+                .font(.title3.weight(.semibold))
+            Text("This Mac app keeps capture, ASR, translation, history, and export controls. Live subtitle text is not rendered in SwiftUI.")
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 540)
 
-            Divider()
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Translation")
-                    .font(.headline)
-                translationList
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-        }
-    }
-
-    private var segmentList: some View {
-        List(appState.transcriptSegments) { segment in
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Text(timestampText(segment.startTime))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Menu {
-                        Button("Approved") { appState.setQuality(id: segment.id, quality: .approved) }
-                        Button("Mark incorrect") { appState.setQuality(id: segment.id, quality: .incorrect) }
-                        Button("Unreviewed") { appState.setQuality(id: segment.id, quality: .unreviewed) }
-                    } label: {
-                        Text(segment.qualityLabel.rawValue)
-                            .font(.caption)
+            if let url = appState.subtitleOverlayURL {
+                VStack(spacing: 8) {
+                    Text(url.absoluteString)
+                        .font(.callout.monospaced())
+                        .textSelection(.enabled)
+                    HStack {
+                        Button("Copy URL", systemImage: "doc.on.doc") {
+                            appState.copySubtitleOverlayURL()
+                        }
+                        Button("Open overlay", systemImage: "arrow.up.forward.app") {
+                            appState.openSubtitleOverlay()
+                        }
                     }
                 }
-                TextField(
-                    "Final transcript",
-                    text: Binding(
-                        get: { segment.correctedText ?? segment.normalizedText },
-                        set: { appState.editSegment(id: segment.id, correctedText: $0) }
-                    ),
-                    axis: .vertical
-                )
-                .textFieldStyle(.plain)
-                .lineLimit(1...4)
-            }
-            .contextMenu {
-                Button("Copy") { copy(segment.preferredText) }
-            }
-        }
-        .listStyle(.plain)
-    }
-
-    private var translationList: some View {
-        List(appState.transcriptSegments) { segment in
-            VStack(alignment: .leading, spacing: 5) {
-                Text(timestampText(segment.startTime))
-                    .font(.caption.monospacedDigit())
+                .padding(14)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+            } else {
+                Text(appState.subtitleOverlayStatus)
+                    .font(.callout)
                     .foregroundStyle(.secondary)
-                Text(segment.translatedText ?? "Waiting for final-only translation…")
-                    .foregroundStyle(segment.translatedText == nil ? .secondary : .primary)
-                    .italic(segment.translatedText == nil)
             }
-            .contextMenu {
-                if let text = segment.translatedText {
-                    Button("Copy") { copy(text) }
-                }
-            }
+
+            Text("The page has a transparent background for OBS/browser sources. A normal browser window may still have its own opaque window chrome.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 580)
+            Spacer()
         }
-        .listStyle(.plain)
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var modelStateText: String {
@@ -312,18 +274,9 @@ struct MainView: View {
         }
     }
 
-    private func timestampText(_ time: TimeInterval) -> String {
-        TimestampFormatter.vtt(time)
-    }
-
     private func historyMetadata(_ session: TranscriptionSession) -> String {
         let modelName = session.asrModelName ?? "No model"
         return "\(session.audioSourceType.displayName) · \(session.targetLanguage.uppercased()) · \(modelName)"
-    }
-
-    private func copy(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
     }
 }
 
@@ -370,10 +323,51 @@ private struct SettingsView: View {
                 .padding(.top, 4)
                 .disabled(appState.isRunning)
             }
+            GroupBox("Local subtitle overlay") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Grid(alignment: .leading, verticalSpacing: 8) {
+                        GridRow {
+                            Text("Display delay")
+                            Stepper(value: $appState.subtitleDisplayDelay, in: 0...60, step: 0.5) {
+                                Text("\(appState.subtitleDisplayDelay, format: .number.precision(.fractionLength(1))) seconds")
+                            }
+                        }
+                    }
+                    Text("Positive delay is measured from the end of captured speech. It only delays final subtitle presentation; it does not change audio capture, ASR, translation, saved timestamps, or exports. Changes apply to captions finalized after the adjustment.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let url = appState.subtitleOverlayURL {
+                        HStack {
+                            Text(url.absoluteString)
+                                .font(.caption.monospaced())
+                                .textSelection(.enabled)
+                                .lineLimit(1)
+                            Spacer()
+                            Button("Copy") { appState.copySubtitleOverlayURL() }
+                            Button("Open") { appState.openSubtitleOverlay() }
+                        }
+                    } else {
+                        Text(appState.subtitleOverlayStatus)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.top, 4)
+            }
             GroupBox("Local dependencies") {
                 VStack(alignment: .leading, spacing: 8) {
                     Button("Choose whisper.cpp CLI…") { appState.chooseWhisperCLI() }
                     Button("Import GGUF model…") { appState.importModel() }
+                    if let whisperCLIURL = appState.whisperCLIURL {
+                        Label("CLI: \(whisperCLIURL.lastPathComponent)", systemImage: "checkmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                            .help(whisperCLIURL.path)
+                    } else {
+                        Label("No whisper.cpp CLI selected", systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                     Text("Audio and text remain on this Mac. The app does not download model weights or use cloud ASR/translation.")
                         .font(.caption)
                         .foregroundStyle(.secondary)

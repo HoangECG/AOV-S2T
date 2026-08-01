@@ -34,8 +34,10 @@ unless an administrator has a specific support procedure.
 ## Screen and system-audio capture
 
 ScreenCaptureKit system-audio capture is controlled by Screen Recording TCC
-consent. The code preflights with CGPreflightScreenCaptureAccess and emits
-permissionDenied before creating a stream when consent is missing.
+consent. On an explicit Start action, the code preflights with
+CGPreflightScreenCaptureAccess and asks with CGRequestScreenCaptureAccess when
+consent is missing. It emits permissionDenied before creating a stream if access
+remains unavailable.
 
 In System Settings, open Privacy & Security and enable the app under Screen &
 System Audio Recording. On older macOS releases the pane may be named Screen
@@ -43,6 +45,11 @@ Recording. macOS can require quitting and reopening the app after this change.
 A person should then select a display or eligible application source in the app;
 capture uses an audio stream only and excludes this app's audio for display
 capture.
+
+The default local build is ad-hoc signed. That identity applies only to the
+exact build, so a code-changing rebuild can require Screen Recording consent
+again. Set `CODE_SIGN_IDENTITY` to an installed Apple Development or Developer
+ID Application identity when building a durable local app.
 
 Availability of application-level audio selection varies by macOS release and
 what ScreenCaptureKit reports. A missing source is a normal unavailable state,
@@ -62,6 +69,18 @@ Do not hard-code absolute paths or assume broad filesystem access. The current
 model import flow uses a user file picker and stores an imported copy under
 Application Support; release sandboxing and durable security-scoped bookmarks
 still need verification.
+
+## Local subtitle overlay
+
+The transparent subtitle page is served only to `127.0.0.1` and needs no new
+TCC prompt. It does not start capture, send audio, or request Screen Recording
+permission. It holds only the latest subtitle in process memory; a local browser
+or OBS source fetches it from the app's ephemeral loopback URL.
+
+For a sandboxed, signed distribution, validate the appropriate incoming-network
+server entitlement with the target Xcode/macOS SDK. Do not replace the explicit
+loopback binding with a wildcard or LAN listener. Details are in
+[LOCAL_OVERLAY.md](LOCAL_OVERLAY.md).
 
 ## Data handling
 

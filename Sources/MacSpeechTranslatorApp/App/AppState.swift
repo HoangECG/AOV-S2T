@@ -20,6 +20,7 @@ final class AppState: ObservableObject {
     @Published var selectedSystemAudioSourceID: String? { didSet { persistAppSettings() } }
     @Published var models: [ASRModelDescriptor] = []
     @Published var selectedModelID: UUID?
+    @Published private(set) var whisperCLIURL: URL?
     @Published var targetLanguage: TranslationLanguage = .english { didSet { persistAppSettings() } }
     @Published var glossaryEntries: [GlossaryEntry] = []
     @Published var newGlossarySpokenForms = ""
@@ -45,6 +46,20 @@ final class AppState: ObservableObject {
     @Published var showSettings = false
     @Published var realtimeConfiguration = RealtimeConfiguration() { didSet { persistAppSettings() } }
     @Published var vadConfiguration = VADConfiguration() { didSet { persistAppSettings() } }
+    /// Presentation-only holdback measured from the end of captured speech.
+    /// It does not delay capture, ASR, persistence, translation, or export.
+    @Published var subtitleDisplayDelay: TimeInterval = 0 {
+        didSet {
+            let sanitized = subtitleDisplayDelay.isFinite ? min(max(0, subtitleDisplayDelay), 60) : 0
+            if sanitized != subtitleDisplayDelay {
+                subtitleDisplayDelay = sanitized
+                return
+            }
+            persistAppSettings()
+        }
+    }
+    @Published private(set) var subtitleOverlayURL: URL?
+    @Published private(set) var subtitleOverlayStatus = "Starting local overlay…"
 
     private let dependencies: AppDependencies
     private let glossary = GlossaryManager()
@@ -57,6 +72,7 @@ final class AppState: ObservableObject {
     private var glossaryRepository: (any GlossaryRepository)?
     private var whisperEngine: WhisperCppEngine?
     private var translationCoordinator: TranslationCoordinator?
+    private var subtitleOverlayServer: LocalSubtitleOverlayServer?
     private var activeSource: (any AudioInputSource)?
     private var coordinator: RealtimeASRCoordinator?
     private var activeSession: TranscriptionSession?
@@ -68,6 +84,9 @@ final class AppState: ObservableObject {
     private var pendingAudioPaths: [UUID: String] = [:]
     private var lastMeterUpdate = 0.0
     private var isStoppingForSourceFailure = false
+    private var subtitleOverlaySequence = 0
+    private var subtitleOverlayGeneration = 0
+    private var subtitlePublicationTasks: [UUID: Task<Void, Never>] = [:]
 
     var availableChannelSelections: [AudioChannelSelection] {
         let channels = devices.first(where: { $0.id == selectedDeviceID })?.channelCount ?? 1
@@ -101,7 +120,17 @@ final class AppState: ObservableObject {
             audioRepository = try dependencies.makeAudioRepository()
             glossaryRepository = try dependencies.makeGlossaryRepository()
             whisperEngine = dependencies.makeWhisperEngine()
+            if let whisperCLIURL {
+                if FileManager.default.isExecutableFile(atPath: whisperCLIURL.path) {
+                    await whisperEngine?.setExecutableURL(whisperCLIURL)
+                } else {
+                    self.whisperCLIURL = nil
+                    persistAppSettings()
+                }
+            }
             translationCoordinator = TranslationCoordinator(engine: dependencies.makeTranslationEngine(), glossary: glossary)
+            subtitleOverlayServer = dependencies.makeSubtitleOverlayServer()
+            _ = await startSubtitleOverlayIfNeeded()
             let persistedGlossary = try await glossaryRepository?.entries() ?? []
             await glossary.replaceEntries(persistedGlossary)
             glossaryEntries = persistedGlossary
@@ -111,6 +140,22 @@ final class AppState: ObservableObject {
             await refreshHistory()
         } catch {
             statusMessage = "Local storage setup failed: \(error.localizedDescription)"
+        }
+    }
+
+    func openSubtitleOverlay() {
+        Task {
+            guard let url = await startSubtitleOverlayIfNeeded() else { return }
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    func copySubtitleOverlayURL() {
+        Task {
+            guard let url = await startSubtitleOverlayIfNeeded() else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(url.absoluteString, forType: .string)
+            statusMessage = "Copied local subtitle overlay URL."
         }
     }
 
@@ -198,17 +243,92 @@ final class AppState: ObservableObject {
         panel.canChooseDirectories = false
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
-            Task {
-                await self?.whisperEngine?.setExecutableURL(url)
-                await self?.refreshModelState()
-                await MainActor.run { self?.statusMessage = "Configured local whisper.cpp CLI." }
-            }
+            Task { await self?.configureWhisperCLI(at: url) }
         }
+    }
+
+    private func configureWhisperCLI(at url: URL) async {
+        guard FileManager.default.isExecutableFile(atPath: url.path) else {
+            statusMessage = "The selected whisper.cpp CLI is not executable."
+            return
+        }
+        whisperCLIURL = url
+        persistAppSettings()
+        await whisperEngine?.setExecutableURL(url)
+        await refreshModelState()
+        statusMessage = "Configured local whisper.cpp CLI."
     }
 
     func selectModel(_ id: UUID?) {
         selectedModelID = id
         Task { await modelManager?.select(modelID: id) }
+    }
+
+    private func startSubtitleOverlayIfNeeded() async -> URL? {
+        guard let subtitleOverlayServer else {
+            subtitleOverlayStatus = "Overlay is unavailable while local services start."
+            return nil
+        }
+        if let url = subtitleOverlayServer.url {
+            subtitleOverlayURL = url
+            return url
+        }
+        subtitleOverlayURL = nil
+        subtitleOverlayStatus = "Starting local overlay…"
+        do {
+            let url = try await subtitleOverlayServer.start()
+            subtitleOverlayURL = url
+            subtitleOverlayStatus = "Ready on 127.0.0.1"
+            return url
+        } catch {
+            subtitleOverlayStatus = "Unavailable: \(error.localizedDescription)"
+            statusMessage = "Subtitle overlay unavailable: \(error.localizedDescription)"
+            return nil
+        }
+    }
+
+    private func clearSubtitleOverlay() {
+        subtitleOverlayGeneration += 1
+        for task in subtitlePublicationTasks.values {
+            task.cancel()
+        }
+        subtitlePublicationTasks.removeAll()
+        subtitleOverlayServer?.clear()
+    }
+
+    private func scheduleSubtitleOverlay(
+        _ segment: TranscriptSegment,
+        captureEndUptime: TimeInterval?,
+        displayDelay: TimeInterval
+    ) {
+        guard let subtitleOverlayServer else { return }
+        subtitleOverlaySequence += 1
+        let subtitle = SubtitleOverlayPayload(
+            sequence: subtitleOverlaySequence,
+            sourceText: segment.preferredText,
+            translatedText: segment.translatedText
+        )
+        let generation = subtitleOverlayGeneration
+        let remainingDelay = SubtitleDisplayDelay.remainingDelay(
+            captureEndUptime: captureEndUptime,
+            displayDelay: displayDelay,
+            now: ProcessInfo.processInfo.systemUptime
+        )
+        guard remainingDelay > 0 else {
+            subtitleOverlayServer.publish(subtitle)
+            return
+        }
+        let taskID = UUID()
+        let task = Task { [weak self, subtitleOverlayServer] in
+            if remainingDelay > 0 {
+                let nanoseconds = UInt64((remainingDelay * 1_000_000_000).rounded())
+                try? await Task.sleep(nanoseconds: nanoseconds)
+            }
+            guard !Task.isCancelled, let self, self.subtitleOverlayGeneration == generation else { return }
+            subtitleOverlayServer.publish(subtitle)
+            self.subtitlePublicationTasks[taskID] = nil
+        }
+        subtitlePublicationTasks[taskID] = task
     }
 
     func startCapture() {
@@ -225,6 +345,11 @@ final class AppState: ObservableObject {
             statusMessage = "Import and select a local GGUF model before starting."
             return
         }
+        guard audioSource != .systemAudio || requestScreenRecordingPermissionIfNeeded() else {
+            return
+        }
+        clearSubtitleOverlay()
+        _ = await startSubtitleOverlayIfNeeded()
         let inputSource: any AudioInputSource = audioSource == .microphone ? DefaultMicrophoneAudioSource() : SystemAudioInputSource()
         let sourceConfiguration = AudioInputConfiguration(
             source: audioSource,
@@ -309,6 +434,7 @@ final class AppState: ObservableObject {
         isRunning = false
         audioState = .stopped
         partialEvent = nil
+        clearSubtitleOverlay()
         statusMessage = "Stopped. Final-only transcript history remains on this Mac."
         await refreshHistory()
     }
@@ -416,6 +542,7 @@ final class AppState: ObservableObject {
     private func persistFinal(_ event: TranscriptEvent) async {
         guard let transcriptRepository else { return }
         let sentences = await sentenceFinalizer.finalize(text: event.normalizedText, startTime: event.startTime, endTime: event.endTime)
+        let displayDelay = subtitleDisplayDelay
         for sentence in sentences {
             var segment = TranscriptSegment(
                 sessionID: event.sessionID,
@@ -432,6 +559,14 @@ final class AppState: ObservableObject {
                 try await transcriptRepository.saveFinalSegment(segment)
                 transcriptSegments.append(segment)
                 await translate(&segment)
+                let sentenceCaptureEndUptime = event.captureEndUptime.map {
+                    $0 - max(0, event.endTime - sentence.endTime)
+                }
+                scheduleSubtitleOverlay(
+                    segment,
+                    captureEndUptime: sentenceCaptureEndUptime,
+                    displayDelay: displayDelay
+                )
             } catch {
                 statusMessage = "Could not save final transcript: \(error.localizedDescription)"
             }
@@ -647,12 +782,19 @@ final class AppState: ObservableObject {
     }
 
     func requestScreenRecordingPermission() {
-        if CGPreflightScreenCaptureAccess() {
+        if requestScreenRecordingPermissionIfNeeded() {
             statusMessage = "Screen Recording permission is already granted."
-        } else {
-            _ = CGRequestScreenCaptureAccess()
-            statusMessage = "macOS showed the Screen Recording permission request. Restart the app if macOS asks you to."
         }
+    }
+
+    private func requestScreenRecordingPermissionIfNeeded() -> Bool {
+        guard !CGPreflightScreenCaptureAccess() else { return true }
+        _ = CGRequestScreenCaptureAccess()
+        guard CGPreflightScreenCaptureAccess() else {
+            statusMessage = "Allow MacSpeechTranslator in System Settings > Privacy & Security > Screen & System Audio Recording, then quit and reopen the app before starting."
+            return false
+        }
+        return true
     }
 
     private func refreshModelState() async {
@@ -675,6 +817,12 @@ final class AppState: ObservableObject {
         bilingualExport = saved.bilingualExport
         realtimeConfiguration = saved.realtimeConfiguration
         vadConfiguration = saved.vadConfiguration
+        subtitleDisplayDelay = min(max(0, saved.subtitleDisplayDelay ?? 0), 60)
+        whisperCLIURL = saved.whisperCLIPath.map { URL(fileURLWithPath: $0) }
+        // Other restored properties persist from their observers. Write once
+        // after restoring the CLI too, so those intermediate writes cannot
+        // erase the optional CLI path from an older settings payload.
+        persistAppSettings()
     }
 
     private func persistAppSettings() {
@@ -689,7 +837,9 @@ final class AppState: ObservableObject {
             exportFormat: exportFormat,
             bilingualExport: bilingualExport,
             realtimeConfiguration: realtimeConfiguration,
-            vadConfiguration: vadConfiguration
+            vadConfiguration: vadConfiguration,
+            subtitleDisplayDelay: subtitleDisplayDelay,
+            whisperCLIPath: whisperCLIURL?.path
         )
         guard let data = try? JSONEncoder().encode(settings) else { return }
         UserDefaults.standard.set(data, forKey: PersistedAppSettings.key)
@@ -719,4 +869,8 @@ private struct PersistedAppSettings: Codable {
     var bilingualExport: Bool
     var realtimeConfiguration: RealtimeConfiguration
     var vadConfiguration: VADConfiguration
+    /// Optional so settings saved before the overlay existed still decode.
+    var subtitleDisplayDelay: TimeInterval?
+    /// Optional so settings saved before the configured CLI was persisted still decode.
+    var whisperCLIPath: String?
 }

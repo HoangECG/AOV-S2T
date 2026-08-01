@@ -22,5 +22,7 @@
     <string>15.0</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>MacSpeechTranslator uses the selected microphone or audio interface to create local transcripts.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>MacSpeechTranslator captures selected system audio locally to create real-time subtitles and translations.</string>
 </dict>
 </plist>

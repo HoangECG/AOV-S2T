@@ -42,6 +42,7 @@ output from the machine that runs those checks.
 | ASR coordinator | One inference at a time, bounded newest-final queue/drop metric, cancellation, partial revision replacement, valid no-partial short utterance final pass |
 | Transcript | Stable-prefix consensus, overlap de-duplication, Vietnamese whitespace/punctuation/Unicode normalization, sentence edge cases, glossary word boundaries |
 | Translation | Final-only requests, ordering, cache key, cancellation, unsupported pair response |
+| Local subtitle overlay | Delay planner (zero, positive, late, missing capture timestamp), loopback-only ready URL, latest-snapshot publish/clear, transparent page, no-store header, safe text rendering, and GET-only routes |
 | Storage / export | Session CRUD, corrected text preservation, recording deletion with session deletion, TXT/JSON/SRT/VTT timestamps, one dataset row per approved recorded utterance |
 | Training tools | Invalid JSONL, path traversal rejection, WAV header checks, duplicate paths/IDs, session split isolation, deterministic seed, metric fixtures |
 
@@ -66,6 +67,9 @@ ScreenCaptureKit session, or model inference in CI.
 6. Run prepare, validate, split, train preflight, and held-out scoring on a
    synthetic dataset fixture. Confirm train/validation/test session sets are
    disjoint.
+7. Start the local subtitle overlay, fetch `/overlay` and `/subtitle` through
+   `127.0.0.1`, verify no-store/security headers, publish/clear a caption, and
+   reject a non-GET request. Do not use a LAN address for this test.
 
 ## Manual hardware and permission matrix
 
@@ -84,6 +88,9 @@ ScreenCaptureKit session, or model inference in CI.
 | Noisy room/music | Energy VAD fallback is labeled and endpoint behavior is observed |
 | Long session | Stable memory, responsive UI, no growing task/inference queue |
 | Translation unavailable | Transcript continues; final-only translation failure is visible |
+| Local browser/OBS overlay | The exact `127.0.0.1` URL opens without starting capture; page is transparent in a browser source, final captions appear, and stop clears text |
+| Overlay timing | Compare `0` and a positive display delay to a known video/audio source; verify delay starts from captured speech end and does not alter exported cues |
+| Overlay network boundary | A second device on the same Wi-Fi and the Mac's LAN IP cannot reach the page; changing/restarting the app requires the newly displayed URL |
 
 ## Performance and benchmark protocol
 

@@ -10,8 +10,8 @@ The current ASRModelManager accepts files with .gguf or legacy .bin extensions
 and copies them into the app's Application Support models directory. An extension
 check is not proof of compatibility: the configured CLI must be able to load the
 file. Settings exposes local import and CLI-selection actions. The selected CLI
-path is presently session configuration, so revalidate it at each use and do
-not assume it survives a move, replacement, or permission change.
+path is persisted and revalidated when the app opens; choose it again if the
+file moves, is replaced, or loses execute permission.
 
 ## Build a compatible local CLI
 
@@ -32,8 +32,10 @@ source or download a model. CMake is required.
 The repository records whisper.cpp v1.8.3 at
 `2eeeba56e9edd762b4b38467bab96c2517163158` in
 Vendor/whisper.cpp/REVISION, and bootstrap verifies that exact checkout. This
-host has not fetched the vendor source or completed a CLI build, so it makes no
-claim of a successful local whisper.cpp integration run.
+current host has a pinned whisper.cpp checkout and has completed a local CLI
+build with CMake. Always run the smoke test below against the exact model and
+CLI you intend to use; a successful build alone does not prove transcription
+quality.
 
 ## Obtain a model deliberately
 

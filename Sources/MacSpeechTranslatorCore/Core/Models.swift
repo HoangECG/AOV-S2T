@@ -348,6 +348,10 @@ public struct TranscriptEvent: Identifiable, Sendable, Equatable {
     public let createdAt: Date
     public let isFinal: Bool
     public let confidence: Float?
+    /// Monotonic time at which the captured utterance ended. This stays in
+    /// memory only so presentation can be delayed without changing exported
+    /// session timestamps.
+    public let captureEndUptime: TimeInterval?
 
     public init(
         id: UUID = UUID(),
@@ -361,7 +365,8 @@ public struct TranscriptEvent: Identifiable, Sendable, Equatable {
         endTime: TimeInterval,
         createdAt: Date = .now,
         isFinal: Bool,
-        confidence: Float? = nil
+        confidence: Float? = nil,
+        captureEndUptime: TimeInterval? = nil
     ) {
         self.id = id
         self.sessionID = sessionID
@@ -375,6 +380,7 @@ public struct TranscriptEvent: Identifiable, Sendable, Equatable {
         self.createdAt = createdAt
         self.isFinal = isFinal
         self.confidence = confidence
+        self.captureEndUptime = captureEndUptime
     }
 }
 
@@ -620,7 +626,8 @@ public enum MacSpeechTranslatorError: LocalizedError, Sendable, Equatable {
     public var errorDescription: String? {
         switch self {
         case .microphonePermissionDenied: "Microphone permission was denied."
-        case .screenCapturePermissionDenied: "Screen Recording permission was denied."
+        case .screenCapturePermissionDenied:
+            "Screen Recording access is required. Enable MacSpeechTranslator in System Settings > Privacy & Security > Screen Recording, then restart the app."
         case .deviceNotFound: "The selected audio input device was not found."
         case .deviceDisconnected: "The selected audio input device was disconnected."
         case .invalidAudioFormat: "The audio format is not supported."

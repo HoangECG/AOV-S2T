@@ -219,7 +219,8 @@ public actor RealtimeASRCoordinator {
             startTime: utterance.startTime,
             endTime: endTime,
             isFinal: false,
-            confidence: result.confidence
+            confidence: result.confidence,
+            captureEndUptime: endCaptureUptime
         ))
     }
 
@@ -307,7 +308,8 @@ public actor RealtimeASRCoordinator {
                 startTime: utterance.startTime,
                 endTime: utterance.endTime,
                 isFinal: true,
-                confidence: result.confidence
+                confidence: result.confidence,
+                captureEndUptime: utterance.endCaptureUptime
             ))
         }
         startPendingFinalIfNeeded()

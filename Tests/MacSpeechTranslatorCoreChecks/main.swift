@@ -24,8 +24,10 @@ struct MacSpeechTranslatorCoreChecks {
             ("TXT JSON SRT VTT export", checkExporters),
             ("dataset WAV and manifest export", checkDatasetExport),
             ("realtime coordinator single final inference", checkRealtimeCoordinator),
-            ("realtime coordinator finalizes valid speech without a partial", checkNoPartialFinal),
-            ("realtime coordinator queues newest final", checkQueuedFinal)
+            ("realtime coordinator finalizes valid speech with a capture timestamp", checkNoPartialFinal),
+            ("realtime coordinator queues newest final", checkQueuedFinal),
+            ("subtitle display delay planning", checkSubtitleDisplayDelay),
+            ("loopback subtitle overlay server", checkSubtitleOverlayServer)
         ]
         var failures: [String] = []
         for (name, check) in checks {
@@ -395,12 +397,89 @@ struct MacSpeechTranslatorCoreChecks {
         )
         await coordinator.start(sessionID: UUID())
         let frame: (Float, TimeInterval) -> AudioFrame = { level, time in
-            AudioFrame(samples: Array(repeating: level, count: 320), sampleRate: 16_000, channelCount: 1, timestamp: time)
+            AudioFrame(
+                samples: Array(repeating: level, count: 320),
+                sampleRate: 16_000,
+                channelCount: 1,
+                timestamp: time,
+                captureEndUptime: 10_000 + time
+            )
         }
         for time in [0.0, 0.03, 0.08] { await coordinator.ingest(frame(0.2, time)) }
         for time in [0.12, 0.17, 0.24] { await coordinator.ingest(frame(0.001, time)) }
         try await Task.sleep(for: .milliseconds(80))
         try expectEqual(await engine.finalInvocationCount, 1)
+        var eventIterator = coordinator.eventStream.makeAsyncIterator()
+        let finalEvent = await eventIterator.next()
+        try expectEqual(finalEvent?.type, .final)
+        try expect((finalEvent?.captureEndUptime ?? 0) >= 10_000, "final event lost its capture timestamp")
+    }
+
+    private static func checkSubtitleDisplayDelay() async throws {
+        try expectEqual(
+            SubtitleDisplayDelay.remainingDelay(captureEndUptime: 100, displayDelay: 15, now: 105),
+            10
+        )
+        try expectEqual(
+            SubtitleDisplayDelay.remainingDelay(captureEndUptime: 100, displayDelay: 15, now: 120),
+            0
+        )
+        try expectEqual(
+            SubtitleDisplayDelay.remainingDelay(captureEndUptime: nil, displayDelay: 15, now: 100),
+            0
+        )
+        try expectEqual(
+            SubtitleDisplayDelay.remainingDelay(captureEndUptime: 100, displayDelay: -2, now: 100),
+            0
+        )
+    }
+
+    private static func checkSubtitleOverlayServer() async throws {
+        let server = LocalSubtitleOverlayServer()
+        defer { server.stop() }
+
+        let overlayURL = try await server.start()
+        try expectEqual(overlayURL.host, "127.0.0.1")
+        try expect((overlayURL.port ?? 0) > 0, "overlay listener did not receive an ephemeral port")
+
+        let subtitle = SubtitleOverlayPayload(
+            sequence: 1,
+            sourceText: "<script>not markup</script>",
+            translatedText: "Hello"
+        )
+        server.publish(subtitle)
+
+        let (overlayData, overlayResponse) = try await URLSession.shared.data(from: overlayURL)
+        let html = String(decoding: overlayData, as: UTF8.self)
+        let overlayHTTP = try httpResponse(overlayResponse)
+        try expectEqual(overlayHTTP.statusCode, 200)
+        try expectEqual(overlayHTTP.value(forHTTPHeaderField: "Cache-Control"), "no-store")
+        try expect(html.contains("background: transparent"), "overlay page is not transparent")
+        try expect(html.contains("textContent"), "overlay page does not render text safely")
+
+        var components = URLComponents(url: overlayURL, resolvingAgainstBaseURL: false)
+        components?.path = "/subtitle"
+        guard let subtitleURL = components?.url else {
+            throw CheckFailure(message: "could not create subtitle endpoint URL")
+        }
+        let (subtitleData, subtitleResponse) = try await URLSession.shared.data(from: subtitleURL)
+        let subtitleHTTP = try httpResponse(subtitleResponse)
+        try expectEqual(subtitleHTTP.statusCode, 200)
+        let snapshot = try JSONDecoder().decode(SubtitleOverlaySnapshot.self, from: subtitleData)
+        try expectEqual(snapshot.subtitle, subtitle)
+
+        server.clear(ifCurrentSequence: 0)
+        let (unchangedData, _) = try await URLSession.shared.data(from: subtitleURL)
+        try expectEqual(try JSONDecoder().decode(SubtitleOverlaySnapshot.self, from: unchangedData).subtitle, subtitle)
+
+        server.clear(ifCurrentSequence: subtitle.sequence)
+        let (clearedData, _) = try await URLSession.shared.data(from: subtitleURL)
+        try expectEqual(try JSONDecoder().decode(SubtitleOverlaySnapshot.self, from: clearedData).subtitle, nil)
+
+        var postRequest = URLRequest(url: subtitleURL)
+        postRequest.httpMethod = "POST"
+        let (_, postResponse) = try await URLSession.shared.data(for: postRequest)
+        try expectEqual(try httpResponse(postResponse).statusCode, 405)
     }
 
     private static func makeSegment(
@@ -427,6 +506,13 @@ struct MacSpeechTranslatorCoreChecks {
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
+}
+
+private func httpResponse(_ response: URLResponse) throws -> HTTPURLResponse {
+    guard let response = response as? HTTPURLResponse else {
+        throw CheckFailure(message: "expected an HTTP response")
+    }
+    return response
 }
 
 private struct CheckFailure: LocalizedError {

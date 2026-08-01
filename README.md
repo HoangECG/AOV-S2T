@@ -27,6 +27,9 @@ commands below. A small script builds a local `.app` bundle from the package.
 - Local SQLite session/history storage, transcript correction/quality labels,
   optional 16 kHz PCM WAV utterance recording, TXT/JSON/SRT/VTT export, and
   approved-only dataset WAV + JSONL export.
+- A loopback-only transparent browser/OBS subtitle overlay with a configurable
+  presentation delay measured from captured speech end. The SwiftUI app keeps
+  controls and history; it does not render live subtitle text.
 - Offline Python dataset preparation, session-safe split, evaluation, and
   fine-tuning/conversion-preflight tools under `tools/`.
 
@@ -56,10 +59,20 @@ The second command prints the generated app location; open it with the printed
 Scripts/run_tests.sh
 ```
 
-It runs 20 deterministic Swift core checks and syntax/CLI checks for the
+It runs 22 deterministic Swift core checks and syntax/CLI checks for the
 offline tools. It does not use microphone hardware, Screen Recording permission,
 or model weights. See [docs/TEST_PLAN.md](docs/TEST_PLAN.md) for the required
 manual device/model test matrix and benchmark protocol.
+
+## Local transparent subtitle overlay
+
+The app starts a native loopback-only web page and shows its exact
+`http://127.0.0.1:<port>/overlay` URL in the main window. Use **Open overlay**
+or copy it into an OBS/browser source; the page itself is transparent. Set a
+0–60 second **Display delay** in Settings when a video source needs subtitle
+holdback. It is presentation-only and starts from the end of captured speech.
+See [docs/LOCAL_OVERLAY.md](docs/LOCAL_OVERLAY.md) for browser/OBS setup,
+privacy boundaries, and exact timing semantics.
 
 ## Configure local ASR
 
@@ -71,9 +84,9 @@ Scripts/bootstrap.sh --fetch-whisper
 Scripts/build_whisper_xcframework.sh --source Vendor/whisper.cpp --output .local/bin/whisper-cli
 ```
 
-The current host does not have CMake, so the second command is not runnable
-here. In the app, open Settings, choose that local `whisper-cli`, import a
-compatible GGUF model, choose an input, then start. See
+The current host has CMake and has built the local CLI with Command Line Tools
+rather than full Xcode. In the app, open Settings, choose that local
+`whisper-cli`, import a compatible GGUF model, choose an input, then start. See
 [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md) before downloading or converting a
 model.
 
@@ -105,9 +118,9 @@ before deploying a model.
 
 Current known limits are deliberately visible: no in-process C/Objective-C++
 whisper bridge is bundled (the local CLI adapter is used instead), Energy VAD is
-not Silero, the selected CLI path is not yet persisted, and real model,
-microphone, USB interface, system-audio, and Apple Translation language-pack
-tests have not run on this host. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+not Silero, and real microphone, USB interface, system-audio, and Apple
+Translation language-pack tests have not run on this host. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 and [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## Next steps

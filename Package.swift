@@ -17,6 +17,7 @@ let package = Package(
                 .linkedFramework("AudioToolbox"),
                 .linkedFramework("CoreAudio"),
                 .linkedFramework("CoreMedia"),
+                .linkedFramework("Network"),
                 .linkedFramework("ScreenCaptureKit"),
                 .linkedFramework("Translation"),
                 .linkedLibrary("sqlite3")
