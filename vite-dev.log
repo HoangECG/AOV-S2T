@@ -1,0 +1,28 @@
+
+> my-s2t@0.1.0 dev
+> vite --host 127.0.0.1
+
+9:54:35 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+
+  VITE v8.2.1  ready in 2427 ms
+
+  ➜  Local:   http://127.0.0.1:1420/
+  ➜  press h + enter to show help
+9:54:37 PM [vite] (client) [optimizer] scanning dependencies...
+10:04:16 PM [vite] (client) page reload workers/vendor/whisper.cpp/examples/bench.wasm/index-tmpl.html
+10:04:16 PM [vite] (client) page reload workers/vendor/whisper.cpp/examples/command.wasm/index-tmpl.html
+10:04:16 PM [vite] (client) page reload workers/vendor/whisper.cpp/examples/stream.wasm/index-tmpl.html
+10:04:16 PM [vite] (client) page reload workers/vendor/whisper.cpp/examples/wchess/wchess.wasm/index-tmpl.html
+10:04:16 PM [vite] (client) page reload workers/vendor/whisper.cpp/examples/whisper.wasm/index-tmpl.html
+10:07:09 PM [vite] (client) hmr update /src/components/ReadinessDashboard.tsx
+10:07:09 PM [vite] (client) hmr update /src/styles.css
+10:07:20 PM [vite] (client) hmr update /src/App.tsx
+10:07:20 PM [vite] (client) hmr update /src/App.tsx
+10:08:35 PM [vite] vite.config.ts changed, restarting server...
+10:08:35 PM [vite] server restarted.
+10:08:55 PM [vite] vite.config.ts changed, restarting server...
+10:08:56 PM [vite] server restarted.
+10:09:35 PM [vite] (client) page reload src-tauri/target/release/build/live-subtitle-tool-203bffdf8899c6fe/out/tauri-codegen-assets/3b967da56952a8de59e541cb7996ae9e6157334146f24900030420a1b8e20463.html
+10:09:35 PM [vite] (client) page reload src-tauri/target/release/build/live-subtitle-tool-203bffdf8899c6fe/out/tauri-codegen-assets/3b967da56952a8de59e541cb7996ae9e6157334146f24900030420a1b8e20463.html
+10:12:58 PM [vite] (client) page reload src-tauri/target/release/build/live-subtitle-tool-203bffdf8899c6fe/out/tauri-codegen-assets/3904afeb013238981b787614dd3ae5fdf16b16096053ae338d9a6e8b0d75383f.html
+10:12:58 PM [vite] (client) page reload src-tauri/target/release/build/live-subtitle-tool-203bffdf8899c6fe/out/tauri-codegen-assets/3904afeb013238981b787614dd3ae5fdf16b16096053ae338d9a6e8b0d75383f.html

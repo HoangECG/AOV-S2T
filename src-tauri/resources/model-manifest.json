@@ -1,0 +1,52 @@
+{
+  "modelId": "ggml-phowhisper-large",
+  "revision": "b9136a44b5f2ca664bd0b8f74baecf1715f6eeeb",
+  "artifactName": "ggml-phowhisper-large.bin",
+  "expectedBytes": 3094623708,
+  "sha256": "99943fddc0504388a129215afed0edd91cf9caf046d44c56387a309a9a390124",
+  "format": "GGML",
+  "installationMode": "local-conversion",
+  "source": {
+    "repository": "vinai/PhoWhisper-large",
+    "revision": "b9136a44b5f2ca664bd0b8f74baecf1715f6eeeb",
+    "checkpoint": "pytorch_model.bin",
+    "files": [
+      {
+        "name": "added_tokens.json",
+        "expectedBytes": 2082,
+        "sha256": "ce949fe720c14311cb6c446e69cfe340dc669d7b006077a6feed6ae571dd7e88"
+      },
+      {
+        "name": "config.json",
+        "expectedBytes": 1334,
+        "sha256": "e231b4ad7d065c241b5e9249b36738b466d850b1c135ec41da66d93abb58a082"
+      },
+      {
+        "name": "pytorch_model.bin",
+        "expectedBytes": 6173655608,
+        "sha256": "9e0077352544f497673395b313a9ef6d7cd2967598197c4d691d8042333060b2"
+      },
+      {
+        "name": "vocab.json",
+        "expectedBytes": 835550,
+        "sha256": "8f680bba319e01a653d2e8a5dbc17a9157179e0576e6ce74ce0c06356c6e24f9"
+      }
+    ]
+  },
+  "converter": {
+    "repository": "ggml-org/whisper.cpp",
+    "revision": "4834a2327d008ace3ec5a9ed00f51454bcabbc1c",
+    "script": "models/convert-h5-to-ggml.py",
+    "expectedBytes": 8109,
+    "sha256": "6d92ba7e4c36a676627c8745249174098bed557c8f3eb47b9e1c21caeaf978a2"
+  },
+  "melFilters": {
+    "repository": "openai/whisper",
+    "revision": "25639fc17ddc013d56c594bfbf7644f2185fad84",
+    "path": "whisper/assets/mel_filters.npz",
+    "expectedBytes": 4271,
+    "sha256": "7450ae70723a5ef9d341e3cee628c7cb0177f36ce42c44b7ed2bf3325f0f6d4c"
+  },
+  "workerCompatibility": "ggml-org/whisper.cpp@4834a2327d008ace3ec5a9ed00f51454bcabbc1c",
+  "license": "BSD-3-Clause"
+}

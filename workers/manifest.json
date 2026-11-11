@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "packageState": "build-required",
+  "releaseTarget": {
+    "architecture": "x86_64",
+    "supportedWindows": ["Windows 10 22H2", "Windows 11"],
+    "requiredRuntime": ["WebView2", "MSVC runtime"]
+  },
+  "source": {
+    "repository": "https://github.com/ggml-org/whisper.cpp.git",
+    "revision": "4834a2327d008ace3ec5a9ed00f51454bcabbc1c"
+  },
+  "model": {
+    "modelId": "ggml-phowhisper-large",
+    "modelRevision": "b9136a44b5f2ca664bd0b8f74baecf1715f6eeeb",
+    "workerCompatibility": "ggml-org/whisper.cpp@4834a2327d008ace3ec5a9ed00f51454bcabbc1c"
+  },
+  "fixture": {
+    "fixtureId": "vi-lingua-libre-pho-thong-thoai-2022-09-15",
+    "audioPath": "workers/fixtures/vi-self-test-16khz.wav",
+    "audioSha256": "67c15ac964f6e913c02dd49eb214d47e10338e4ffd0bfec69505f1fd5b93d612",
+    "sampleRateHz": 16000,
+    "channels": 1,
+    "encoding": "pcm_s16le",
+    "expectedAssetPath": "workers/fixtures/vi-self-test.expected.json",
+    "expectedAssetSha256": "9d75c11d1373f7d0d33af0dbd3d8b6d9d906826be911b1d70fa19d9aa436aaf4",
+    "expectedTranscriptSha256": "c179fdb24332badb0296650951a89dea59d4e4e3c01c249bd3fb81bf0f64ceab"
+  },
+  "workers": [
+    {
+      "kind": "cpu",
+      "buildId": "whispercpp-4834a232-cpu-x64",
+      "executable": "workers/out/x86_64-pc-windows-msvc/cpu/worker-cpu.exe",
+      "files": [],
+      "sourceRevision": "4834a2327d008ace3ec5a9ed00f51454bcabbc1c",
+      "modelRevision": "b9136a44b5f2ca664bd0b8f74baecf1715f6eeeb",
+      "architecture": "x86_64",
+      "backend": "cpu",
+      "cmakeFlags": ["-DGGML_NATIVE=OFF"],
+      "admission": "requires-manifest-checksum-and-exact-fixture-self-test"
+    },
+    {
+      "kind": "cuda",
+      "buildId": "whispercpp-4834a232-cuda-x64",
+      "executable": "workers/out/x86_64-pc-windows-msvc/cuda/worker-cuda.exe",
+      "files": [],
+      "sourceRevision": "4834a2327d008ace3ec5a9ed00f51454bcabbc1c",
+      "modelRevision": "b9136a44b5f2ca664bd0b8f74baecf1715f6eeeb",
+      "architecture": "x86_64",
+      "backend": "cuda",
+      "cmakeFlags": ["-DGGML_CUDA=ON", "-DGGML_CUDA_FA=OFF", "-DGGML_CUDA_NCCL=OFF", "-DGGML_NATIVE=OFF"],
+      "admission": "requires-manifest-checksum-and-exact-fixture-self-test"
+    },
+    {
+      "kind": "vulkan",
+      "buildId": "whispercpp-4834a232-vulkan-x64",
+      "executable": "workers/out/x86_64-pc-windows-msvc/vulkan/worker-vulkan.exe",
+      "files": [],
+      "sourceRevision": "4834a2327d008ace3ec5a9ed00f51454bcabbc1c",
+      "modelRevision": "b9136a44b5f2ca664bd0b8f74baecf1715f6eeeb",
+      "architecture": "x86_64",
+      "backend": "vulkan",
+      "cmakeFlags": ["-DGGML_VULKAN=ON", "-DGGML_NATIVE=OFF"],
+      "admission": "requires-manifest-checksum-and-exact-fixture-self-test"
+    }
+  ]
+}

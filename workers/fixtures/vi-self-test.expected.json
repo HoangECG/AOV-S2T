@@ -1,0 +1,24 @@
+{
+  "fixtureId": "vi-lingua-libre-pho-thong-thoai-2022-09-15",
+  "language": "vi",
+  "spokenPhrase": "phổ thông thoại",
+  "normalizedTranscript": "phổ thông thoại",
+  "normalizer": "trim, lowercase, remove terminal ASCII sentence punctuation, collapse internal Unicode whitespace to one ASCII space",
+  "expectedTranscriptSha256": "c179fdb24332badb0296650951a89dea59d4e4e3c01c249bd3fb81bf0f64ceab",
+  "source": {
+    "name": "Lingua Libre pronunciation recording: phổ thông thoại",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:LL-Q9199_(vie)-Penn_Zero_MSSJ-phổ_thông_thoại.wav",
+    "originalFilename": "LL-Q9199_(vie)-Penn_Zero_MSSJ-phổ_thông_thoại.wav",
+    "contributor": "Penn Zero MSSJ",
+    "recordingDate": "2022-09-15",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "redistributionGrant": "The named speaker and recorder released this recording under CC0-1.0 on Wikimedia Commons; CC0 permits copying, modifying, distributing, and performing it without permission."
+  },
+  "transformation": {
+    "tool": "FFmpeg 8.1",
+    "command": "decode original 48 kHz mono PCM WAV; resample to 16 kHz mono signed 16-bit PCM WAV",
+    "performedOn": "2026-08-19",
+    "attributionRequired": false
+  }
+}

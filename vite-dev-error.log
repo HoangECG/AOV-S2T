@@ -1,0 +1,72 @@
+9:54:52 PM [vite] (client) [Unhandled rejection] TypeError: Cannot read properties of undefined (reading 'transformCallback')
+ > transformCallback node_modules/@tauri-apps/api/core.js:72:38
+ > listen node_modules/@tauri-apps/api/event.js:79:17
+ > src/App.tsx:65:9
+    63 |      void refresh();
+    64 |      let unlisten: (() => void) | undefined;
+    65 |      void listen<AudioLevel>("audio-level", (event) => {
+       |           ^
+    66 |        setMeter(event.payload);
+    67 |        if (event.payload.state === "unavailable") {
+ > Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:25989:19
+ > runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:871:29
+ > commitHookEffectListMount node_modules/react-dom/cjs/react-dom-client.development.js:13249:28
+ > commitHookPassiveMountEffects node_modules/react-dom/cjs/react-dom-client.development.js:13336:10
+ > commitPassiveMountOnFiber node_modules/react-dom/cjs/react-dom-client.development.js:15484:12
+ > recursivelyTraversePassiveMountEffects node_modules/react-dom/cjs/react-dom-client.development.js:15439:10
+ > commitPassiveMountOnFiber node_modules/react-dom/cjs/react-dom-client.development.js:15718:10
+
+9:54:52 PM [vite] (client) [Unhandled rejection] TypeError: Cannot read properties of undefined (reading 'transformCallback')
+ > transformCallback node_modules/@tauri-apps/api/core.js:72:38
+ > listen node_modules/@tauri-apps/api/event.js:79:17
+ > src/App.tsx:74:9
+    72 |      }).then((stop) => { unlisten = stop; });
+    73 |      let stopModel: (() => void) | undefined;
+    74 |      void listen<ModelInstallState>("model-progress", (event) => setModel((current) => current && { ...current, state:...
+       |           ^
+    75 |      return () => { unlisten?.(); stopModel?.(); };
+    76 |    }, [refresh, resetCapture]);
+ > Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:25989:19
+ > runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:871:29
+ > commitHookEffectListMount node_modules/react-dom/cjs/react-dom-client.development.js:13249:28
+ > commitHookPassiveMountEffects node_modules/react-dom/cjs/react-dom-client.development.js:13336:10
+ > commitPassiveMountOnFiber node_modules/react-dom/cjs/react-dom-client.development.js:15484:12
+ > recursivelyTraversePassiveMountEffects node_modules/react-dom/cjs/react-dom-client.development.js:15439:10
+ > commitPassiveMountOnFiber node_modules/react-dom/cjs/react-dom-client.development.js:15718:10
+
+9:54:52 PM [vite] (client) [Unhandled rejection] TypeError: Cannot read properties of undefined (reading 'transformCallback')
+ > transformCallback node_modules/@tauri-apps/api/core.js:72:38
+ > listen node_modules/@tauri-apps/api/event.js:79:17
+ > src/App.tsx:65:9
+    63 |      void refresh();
+    64 |      let unlisten: (() => void) | undefined;
+    65 |      void listen<AudioLevel>("audio-level", (event) => {
+       |           ^
+    66 |        setMeter(event.payload);
+    67 |        if (event.payload.state === "unavailable") {
+ > Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:25989:19
+ > runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:871:29
+ > commitHookEffectListMount node_modules/react-dom/cjs/react-dom-client.development.js:13249:28
+ > commitHookPassiveMountEffects node_modules/react-dom/cjs/react-dom-client.development.js:13336:10
+ > reconnectPassiveEffects node_modules/react-dom/cjs/react-dom-client.development.js:15832:10
+ > recursivelyTraverseReconnectPassiveEffects node_modules/react-dom/cjs/react-dom-client.development.js:15784:8
+ > reconnectPassiveEffects node_modules/react-dom/cjs/react-dom-client.development.js:15885:10
+
+9:54:52 PM [vite] (client) [Unhandled rejection] TypeError: Cannot read properties of undefined (reading 'transformCallback')
+ > transformCallback node_modules/@tauri-apps/api/core.js:72:38
+ > listen node_modules/@tauri-apps/api/event.js:79:17
+ > src/App.tsx:74:9
+    72 |      }).then((stop) => { unlisten = stop; });
+    73 |      let stopModel: (() => void) | undefined;
+    74 |      void listen<ModelInstallState>("model-progress", (event) => setModel((current) => current && { ...current, state:...
+       |           ^
+    75 |      return () => { unlisten?.(); stopModel?.(); };
+    76 |    }, [refresh, resetCapture]);
+ > Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:25989:19
+ > runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:871:29
+ > commitHookEffectListMount node_modules/react-dom/cjs/react-dom-client.development.js:13249:28
+ > commitHookPassiveMountEffects node_modules/react-dom/cjs/react-dom-client.development.js:13336:10
+ > reconnectPassiveEffects node_modules/react-dom/cjs/react-dom-client.development.js:15832:10
+ > recursivelyTraverseReconnectPassiveEffects node_modules/react-dom/cjs/react-dom-client.development.js:15784:8
+ > reconnectPassiveEffects node_modules/react-dom/cjs/react-dom-client.development.js:15885:10
+
